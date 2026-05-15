@@ -410,7 +410,7 @@ else
     fi
   done
   if [ -n "$_agent_src" ]; then
-    uv pip install "$_agent_src[mcp]" --trusted-host pypi.org --trusted-host files.pythonhosted.org || error_exit "Failed to install hermes-agent[mcp] requirements"
+    uv pip install "$_agent_src[mcp,honcho]" --trusted-host pypi.org --trusted-host files.pythonhosted.org || error_exit "Failed to install hermes-agent[mcp,honcho] requirements"
   else
     echo ""
     echo "!! WARNING: hermes-agent source not found."
