@@ -1486,7 +1486,7 @@ def get_providers() -> dict[str, Any]:
             # returns logged_in=False (e.g. token not in the hermes credential pool,
             # or refresh token consumed by native Codex CLI / VS Code extension).
             try:
-                from hermes_cli.auth import get_auth_status as _gas
+                from hermes_cli.auth import get_auth_status as _gas  # type: ignore
                 status = _gas(pid)
                 if isinstance(status, dict) and status.get("logged_in"):
                     has_key = True
@@ -1547,7 +1547,7 @@ def get_providers() -> dict[str, Any]:
             import re as _re
             if _re.match(r'^[a-z][a-z0-9_-]{0,63}$', pid):
                 try:
-                    from hermes_cli.auth import get_auth_status as _gas
+                    from hermes_cli.auth import get_auth_status as _gas  # type: ignore
                     status = _gas(pid)
                     if isinstance(status, dict) and status.get("logged_in"):
                         has_key = True
@@ -1595,7 +1595,7 @@ def get_providers() -> dict[str, Any]:
         # "show all" disclosure if added).
         if pid == "nous":
             try:
-                from hermes_cli.models import provider_model_ids as _provider_model_ids
+                from hermes_cli.models import provider_model_ids as _provider_model_ids  # type: ignore
 
                 live_ids = _provider_model_ids("nous") or []
                 if live_ids:

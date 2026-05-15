@@ -261,7 +261,7 @@ def handle_transcribe(handler):
             temp_path = tmp.name
             tmp.write(file_bytes)
         try:
-            from tools.transcription_tools import transcribe_audio
+            from tools.transcription_tools import transcribe_audio  # type: ignore
         except ImportError:
             return j(handler, {'error': 'Speech-to-text is unavailable on this server'}, status=503)
         result = transcribe_audio(temp_path)

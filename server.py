@@ -11,6 +11,12 @@ import time
 import traceback
 from http.server import BaseHTTPRequestHandler, ThreadingHTTPServer
 
+# Container: ensure host's hermes-agent source is on PYTHONPATH for bundled plugins.
+# Must be set before any import that might initialize the plugin manager.
+_agent_dir = "/opt/hermes"
+if _agent_dir not in sys.path:
+    sys.path.insert(0, _agent_dir)
+
 # ── Test-mode network isolation ─────────────────────────────────────────────
 # When `HERMES_WEBUI_TEST_NETWORK_BLOCK=1` is set in the environment, refuse
 # outbound socket connections to anything that is not loopback / RFC1918 /
@@ -101,7 +107,6 @@ if os.environ.get("HERMES_WEBUI_TEST_NETWORK_BLOCK", "").strip() in ("1", "true"
 
     socket.create_connection = _blocked_create_connection
     socket.socket.connect = _blocked_socket_connect
-
 
 try:
     import resource
@@ -398,6 +403,20 @@ def main() -> None:
             print('     Agent features may not work correctly.', flush=True)
         else:
             print('[ok] Agent dependencies installed successfully.', flush=True)
+
+    # ── MCP Tool Discovery (must run before first chat request) ──
+    # discover_mcp_tools() is called on first chat in api/streaming.py, but
+    # the WebUI MCP panel queries /api/mcp/servers immediately on page load.
+    # Without this, the panel always shows "0 tools" until the first chat.
+    try:
+        from tools.mcp_tool import discover_mcp_tools
+        mcp_tool_count = len(discover_mcp_tools())
+        if mcp_tool_count:
+            print(f'[ok] MCP: discovered {mcp_tool_count} tool(s) from configured servers', flush=True)
+        else:
+            print('[ok] MCP: no servers configured (or all failed — check agent logs)', flush=True)
+    except Exception as e:
+        print(f'[!!] MCP discovery skipped: {e}', flush=True)
 
     STATE_DIR.mkdir(parents=True, exist_ok=True)
     SESSION_DIR.mkdir(parents=True, exist_ok=True)

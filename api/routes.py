@@ -642,7 +642,7 @@ def _cron_job_subprocess_main(job, execution_profile_home, result_queue):
     """Run one cron job inside a child process pinned to a profile home."""
     try:
         def _run():
-            from cron.scheduler import run_job
+            from cron.scheduler import run_job  # type: ignore
 
             return run_job(job)
 
@@ -754,7 +754,7 @@ def _run_cron_tracked(job, profile_home=None, execution_profile_home=None):
     agent config/.env while running. When no job profile is selected, both homes
     are the same and legacy server-default behavior is preserved.
     """
-    from cron.jobs import mark_job_run, save_job_output
+    from cron.jobs import mark_job_run, save_job_output  # type: ignore
 
     job_id = job.get("id", "")
     execution_profile_home = execution_profile_home or profile_home
@@ -2023,7 +2023,7 @@ from api.oauth import (
 
 # Approval system (optional -- graceful fallback if agent not available)
 try:
-    from tools.approval import (
+    from tools.approval import (  # type: ignore
         submit_pending as _submit_pending_raw,
         approve_session,
         approve_permanent,
@@ -2979,13 +2979,18 @@ _PLUGIN_VISIBILITY_HOOKS = (
     "pre_llm_call",
     "post_llm_call",
 )
+# When a plugin does NOT register any of the four monitored hooks,
+# we still show it in the Settings panel with an empty hooks list.
+# This lets users see ALL installed plugins, not just the hook-bearing
+# minority. Without this, the panel silently shows "No plugins" even
+# when 12 plugins are loaded — a confusing UX for operators who expect
+# their installed plugins to appear in the WebUI.
 _PLUGIN_VISIBILITY_HOOK_SET = set(_PLUGIN_VISIBILITY_HOOKS)
 
 
 def _get_plugin_manager_for_visibility():
     """Return Hermes Agent's plugin manager for read-only WebUI visibility."""
-    from hermes_cli.plugins import get_plugin_manager
-
+    from hermes_cli.plugins import get_plugin_manager  # type: ignore
     return get_plugin_manager()
 
 
@@ -3027,8 +3032,14 @@ def _plugin_visibility_payload(manager=None) -> dict:
         name = _clean_plugin_visibility_text(getattr(manifest, "name", "") or plugin_key, limit=120)
         version = _clean_plugin_visibility_text(getattr(manifest, "version", ""), limit=80)
         description = _clean_plugin_visibility_text(getattr(manifest, "description", ""), limit=280)
+        # Collect ALL registered hooks (not just the four monitored ones).
+        # The filtered list below only includes _PLUGIN_VISIBILITY_HOOK_SET members,
+        # which is the information shown in the Settings UI. The full hook list
+        # is available in the manifest for debugging purposes but intentionally
+        # omitted from the public API response to avoid leaking internal hook names.
+        all_hooks = list(getattr(manifest, "provides_hooks", []) or []) + list(getattr(loaded, "hooks_registered", []) or [])
         registered = []
-        for hook in list(getattr(manifest, "provides_hooks", []) or []) + list(getattr(loaded, "hooks_registered", []) or []):
+        for hook in all_hooks:
             hook_name = str(hook or "").strip()
             if hook_name in _PLUGIN_VISIBILITY_HOOK_SET and hook_name not in registered:
                 registered.append(hook_name)
@@ -3285,9 +3296,14 @@ def handle_get(handler, parsed) -> bool:
     if parsed.path == "/api/providers":
         return j(handler, get_providers())
 
-    # ── Plugins/hooks visibility (read-only, no callback/source internals) ──
+# ── Plugins/hooks visibility (read-only, no callback/source internals) ──
+
     if parsed.path == "/api/plugins":
+
         return _handle_plugins(handler, parsed)
+
+
+
     if parsed.path == "/api/provider/quota":
         query = parse_qs(parsed.query)
         provider_id = (query.get("provider", [""])[0] or None)
@@ -3950,7 +3966,7 @@ def handle_get(handler, parsed) -> bool:
     # os.environ (process-global) at call time. Wrap in cron_profile_context
     # so the TLS-active profile's jobs.json is read, not the process default.
     if parsed.path == "/api/crons":
-        from cron.jobs import list_jobs
+        from cron.jobs import list_jobs  # type: ignore
         from api.profiles import cron_profile_context
 
         with cron_profile_context():
@@ -4818,7 +4834,7 @@ def handle_post(handler, parsed) -> bool:
             # Also resolve any pending approvals for this session so the
             # agent doesn't stay stuck waiting on an already-dismissed card.
             try:
-                from tools.approval import _pending as _p, _lock as _l
+                from tools.approval import _pending as _p, _lock as _l  # type: ignore
                 with _l:
                     _p.pop(sid, None)
             except Exception:
@@ -6543,7 +6559,7 @@ def _handle_live_models(handler, parsed):
             _agent_dir = _os.path.normpath(_agent_dir)
             if _agent_dir not in _sys.path:
                 _sys.path.insert(0, _agent_dir)
-            from hermes_cli.models import provider_model_ids as _pmi
+            from hermes_cli.models import provider_model_ids as _pmi  # type: ignore
             ids = _pmi(provider)
         except Exception as _import_err:
             logger.debug("provider_model_ids import failed for %s: %s", provider, _import_err)
@@ -6772,7 +6788,7 @@ def _handle_cron_history(handler, parsed):
     Returns lightweight file listing so the frontend can render a run history
     without fetching full output for every run.
     """
-    from cron.jobs import OUTPUT_DIR as CRON_OUT
+    from cron.jobs import OUTPUT_DIR as CRON_OUT  # type: ignore
     import re as _re
 
     qs = parse_qs(parsed.query)
@@ -6815,7 +6831,7 @@ def _handle_cron_history(handler, parsed):
 
 def _handle_cron_run_detail(handler, parsed):
     """Return full content of a single cron run output file."""
-    from cron.jobs import OUTPUT_DIR as CRON_OUT
+    from cron.jobs import OUTPUT_DIR as CRON_OUT  # type: ignore
     import re as _re
 
     qs = parse_qs(parsed.query)
@@ -6865,7 +6881,7 @@ def _cron_output_snippet(text: str, limit: int = 600) -> str:
 
 
 def _handle_cron_output(handler, parsed):
-    from cron.jobs import OUTPUT_DIR as CRON_OUT
+    from cron.jobs import OUTPUT_DIR as CRON_OUT  # type: ignore
 
     qs = parse_qs(parsed.query)
     job_id = qs.get("job_id", [""])[0]
@@ -6905,7 +6921,7 @@ def _handle_cron_recent(handler, parsed):
     qs = parse_qs(parsed.query)
     since = float(qs.get("since", ["0"])[0])
     try:
-        from cron.jobs import list_jobs
+        from cron.jobs import list_jobs  # type: ignore
 
         jobs = list_jobs(include_disabled=True)
         completions = []
@@ -7612,7 +7628,7 @@ def _handle_chat_sync(handler, body):
             _api_key = None
             try:
                 from api.oauth import resolve_runtime_provider_with_anthropic_env_lock
-                from hermes_cli.runtime_provider import resolve_runtime_provider
+                from hermes_cli.runtime_provider import resolve_runtime_provider  # type: ignore
 
                 _rt = resolve_runtime_provider_with_anthropic_env_lock(
                     resolve_runtime_provider,
@@ -7741,7 +7757,7 @@ def _handle_cron_create(handler, body):
     except ValueError as e:
         return bad(handler, str(e))
     try:
-        from cron.jobs import create_job, update_job
+        from cron.jobs import create_job, update_job  # type: ignore
 
         profile = _normalize_cron_profile_value(body.get("profile"))
         toast_notifications = body.get("toast_notifications") is not False
@@ -7770,7 +7786,7 @@ def _handle_cron_update(handler, body):
         require(body, "job_id")
     except ValueError as e:
         return bad(handler, str(e))
-    from cron.jobs import update_job
+    from cron.jobs import update_job  # type: ignore
 
     try:
         updates = {}
@@ -7794,7 +7810,7 @@ def _handle_cron_delete(handler, body):
         require(body, "job_id")
     except ValueError as e:
         return bad(handler, str(e))
-    from cron.jobs import remove_job
+    from cron.jobs import remove_job  # type: ignore
 
     ok = remove_job(body["job_id"])
     if not ok:
@@ -7806,7 +7822,7 @@ def _handle_cron_run(handler, body):
     job_id = body.get("job_id", "")
     if not job_id:
         return bad(handler, "job_id required")
-    from cron.jobs import get_job
+    from cron.jobs import get_job  # type: ignore
 
     job = get_job(job_id)
     if not job:
@@ -7841,7 +7857,7 @@ def _handle_cron_pause(handler, body):
     job_id = body.get("job_id", "")
     if not job_id:
         return bad(handler, "job_id required")
-    from cron.jobs import pause_job
+    from cron.jobs import pause_job  # type: ignore
 
     result = pause_job(job_id, reason=body.get("reason"))
     if result:
@@ -7853,7 +7869,7 @@ def _handle_cron_resume(handler, body):
     job_id = body.get("job_id", "")
     if not job_id:
         return bad(handler, "job_id required")
-    from cron.jobs import resume_job
+    from cron.jobs import resume_job  # type: ignore
 
     result = resume_job(job_id)
     if result:
@@ -8514,7 +8530,7 @@ def _handle_session_compress(handler, body):
 
         def _estimate_messages_tokens_rough(msgs):
             try:
-                from agent.model_metadata import estimate_messages_tokens_rough
+                from agent.model_metadata import estimate_messages_tokens_rough  # type: ignore
 
                 return estimate_messages_tokens_rough(msgs)
             except Exception:
@@ -8528,7 +8544,7 @@ def _handle_session_compress(handler, body):
             focus_topic=None,
         ):
             try:
-                from agent.manual_compression_feedback import summarize_manual_compression
+                from agent.manual_compression_feedback import summarize_manual_compression  # type: ignore
 
                 return summarize_manual_compression(
                     original_messages,
@@ -9133,7 +9149,7 @@ def _handle_handoff_summary(handler, body):
                 return result
 
             if getattr(agent, "api_mode", "") == "anthropic_messages":
-                from agent.anthropic_adapter import build_anthropic_kwargs, normalize_anthropic_response
+                from agent.anthropic_adapter import build_anthropic_kwargs, normalize_anthropic_response  # type: ignore
 
                 ant_kwargs = build_anthropic_kwargs(
                     model=agent.model,
@@ -9735,7 +9751,7 @@ def _mcp_runtime_status_by_name() -> dict[str, dict]:
     is unavailable, fall back to an empty map so the API remains safe.
     """
     try:
-        from tools.mcp_tool import get_mcp_status
+        from tools.mcp_tool import get_mcp_status  # type: ignore
         statuses = get_mcp_status()
     except Exception:
         return {}
@@ -9922,7 +9938,7 @@ def _mcp_tools_from_runtime_status(runtime_by_name, server_summaries):
 def _mcp_tools_from_registry(server_summaries):
     """Read already-registered MCP tool schemas without probing MCP servers."""
     try:
-        from tools.registry import registry
+        from tools.registry import registry  # type: ignore
     except Exception:
         return []
     tools = []

@@ -1,0 +1,102 @@
+{
+  "apiVersion": "workpanel/v2",
+  "kind": "Application",
+  "metadata": {
+    "name": "hermes-webui",
+    "description": "Hermes Web UI — browser interface for Hermes Agent (self-hosted)",
+    "labels": {
+      "app": "hermes-webui",
+      "team": "ai-tools"
+    }
+  },
+  "spec": {
+    "primaryService": "hermes-webui",
+    "env": {
+      "HERMES_WEBUI_HOST": "0.0.0.0",
+      "HERMES_WEBUI_PORT": "8787",
+      "WANTED_UID": "1024",
+      "WANTED_GID": "1024",
+      "HERMES_WEBUI_STATE_DIR": "/home/hermeswebui/.hermes/webui",
+      "HERMES_WEBUI_DEFAULT_WORKSPACE": "/workspace",
+      "PYTHONUNBUFFERED": "1",
+      "PYTHONDONTWRITEBYTECODE": "1",
+      "WORKPANEL_RUN_AS_ROOT": "true",
+      "HERMES_WEBUI_SINGLE_CONTAINER": "true"
+    },
+    "volumes": [
+      {
+        "name": "hermes-state",
+        "mountPath": "/home/hermeswebui/.hermes",
+        "source": "/root/.hermes",
+        "reclaimPolicy": "retain"
+      },
+      {
+        "name": "uv-cache",
+        "mountPath": "/uv_cache",
+        "reclaimPolicy": "retain",
+        "backup": {
+          "enabled": false
+        }
+      },
+      {
+        "name": "hermes-agent-src",
+        "mountPath": "/opt/hermes",
+        "source": "/usr/local/lib/hermes-agent",
+        "reclaimPolicy": "retain"
+      },
+      {
+        "name": "gbrain",
+        "mountPath": "/root/gbrain",
+        "source": "/root/gbrain",
+        "reclaimPolicy": "retain"
+      },
+      {
+        "name": "gbrain-data",
+        "mountPath": "/home/hermeswebui/.gbrain",
+        "source": "/root/.gbrain",
+        "reclaimPolicy": "retain"
+      }
+    ],
+    "services": [
+      {
+        "name": "hermes-webui",
+        "type": "web",
+        "mode": "build",
+        "expose": true,
+        "build": {
+          "context": ".",
+          "dockerfile": "Dockerfile"
+        },
+        "ports": [
+          {
+            "target": 8787,
+            "protocol": "tcp",
+            "healthCheck": "/health",
+            "scheme": "http"
+          }
+        ],
+        "volumes": [
+          "hermes-state",
+          "uv-cache",
+          "hermes-agent-src",
+          "gbrain",
+          "gbrain-data"
+        ],
+        "env": {
+          "HERMES_WEBUI_HOST": "0.0.0.0",
+          "HERMES_WEBUI_PORT": "8787",
+          "WANTED_UID": "1024",
+          "WANTED_GID": "1024",
+          "HERMES_WEBUI_STATE_DIR": "/home/hermeswebui/.hermes/webui",
+          "HERMES_WEBUI_DEFAULT_WORKSPACE": "/workspace",
+          "WORKPANEL_RUN_AS_ROOT": "true",
+          "HOME": "/home/hermeswebui",
+          "HERMES_HOME": "/home/hermeswebui/.hermes",
+          "HERMES_WEBUI_AGENT_DIR": "/opt/hermes",
+          "HERMES_WEBUI_PYTHON": "/app/venv/bin/python3",
+          "HERMES_WEBUI_SINGLE_CONTAINER": "true"
+        }
+      }
+    ]
+  }
+}

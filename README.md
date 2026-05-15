@@ -228,6 +228,61 @@ For the deep dive on each of these, see [`docs/docker.md`](docs/docker.md).
 
 ---
 
+## Workpanel Deployment (PaaS)
+
+Hermes WebUI is **Production Ready** for deployment on the [Workpanel](https://github.com/giglr/workpanel) PaaS infrastructure. The repository includes a `workpanel.json` (v2) manifest that automates the entire deployment lifecycle.
+
+### Features in Workpanel
+- **Automated Infrastructure**: Uses Manifest Mode (v2) for deterministic service and volume provisioning.
+- **Persistence**: Two managed volumes are automatically configured:
+    - `hermes-state`: Persists sessions, profiles, and settings at `/home/hermeswebui/.hermes`.
+    - `uv-cache`: Speeds up subsequent deployments by caching Python dependencies.
+- **Optimized Startup**: UID/GID are pinned to `1024` for instant startup without runtime permission loops.
+
+### ⚠️ Critical Security Note
+For production security, you **MUST** configure the following environment variable via the Workpanel UI:
+
+1. Go to your project in Workpanel.
+2. Open the **Environment Variables** (Env Değişkenleri) tab.
+3. Add `HERMES_WEBUI_PASSWORD` with a strong secret.
+4. Redeploy to apply changes.
+
+Without this variable, the UI will be accessible to anyone with the URL (unless protected by another layer).
+
+### MCP Server Integration (e.g. GBrain)
+
+If you have MCP servers configured in your `~/.hermes/config.yaml` (e.g. GBrain knowledge base), the container needs **two** host directories accessible inside the container:
+
+**1. GBrain source (`gbrain` volume)** — the `~/gbrain/` git repository:
+```json
+{
+  "name": "gbrain",
+  "mountPath": "/root/gbrain",
+  "source": "/root/gbrain",
+  "optional": true
+}
+```
+
+**2. GBrain data (`gbrain-data` volume)** — gbrain's `~/.gbrain/` data directory (config, database, migrations):
+```json
+{
+  "name": "gbrain-data",
+  "mountPath": "/home/hermeswebui/.gbrain",
+  "source": "/root/.gbrain",
+  "optional": true
+}
+```
+
+> **Why two volumes?** GBrain stores its data separately from its source: config at `~/.gbrain/config.json`, PGLite database at `~/.gbrain/brain.pglite/`, and skills at `~/gbrain/skills/`. The container's `HOME=/home/hermeswebui`, so gbrain looks for config at `/home/hermeswebui/.gbrain/`. Mount `~/.gbrain` → `/home/hermeswebui/.gbrain` so gbrain finds its config and database.
+
+- If `optional: true` and the host path does not exist, Workpanel silently skips the mount — all other services continue normally.
+- MCP server env vars (API keys, etc.) are read from `config.yaml`'s `mcp_servers.<name>.env:` section and forwarded automatically.
+- Without these volumes, any MCP-enabled toolset will fail gracefully with a "server unreachable" circuit-breaker error after 3 attempts — all other toolsets remain fully functional.
+
+---
+
+---
+
 ## What start.sh discovers automatically
 
 | Thing | How it finds it |

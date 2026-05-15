@@ -2,3 +2,10 @@
 # The server uses only stdlib + pyyaml.
 # All heavy ML/agent deps live in the Hermes agent venv.
 pyyaml>=6.0
+
+# MCP (Model Context Protocol) client — required for MCP tool integration.
+# hermes-agent uses stdio MCP servers (e.g. gbrain). The mcp Python SDK
+# is needed here because tools.mcp_tool imports from the 'mcp' package at
+# discover_mcp_tools() time. Without it, all MCP servers show "0 tools".
+# Pin to the same version range hermes-agent[dev] uses for compatibility.
+mcp>=1.2.0,<2

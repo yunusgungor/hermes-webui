@@ -552,7 +552,7 @@ def _provider_api_key_present(
     _known_oauth = {"openai-codex", "copilot", "copilot-acp", "qwen-oauth", "nous", "anthropic"}
     if provider not in _SUPPORTED_PROVIDER_SETUPS and provider not in _known_oauth:
         try:
-            from hermes_cli.auth import get_auth_status as _gas
+            from hermes_cli.auth import get_auth_status as _gas  # type: ignore
             status = _gas(provider)
             if isinstance(status, dict) and status.get("logged_in"):
                 return True
@@ -988,7 +988,7 @@ def apply_onboarding_setup(body: dict) -> dict:
 
     try:
         # hermes_cli may cache config at import time; ask it to reload if possible.
-        from hermes_cli.config import reload as _cli_reload
+        from hermes_cli.config import reload as _cli_reload  # type: ignore
         _cli_reload()
     except Exception:
         logger.debug("Failed to reload hermes_cli config")

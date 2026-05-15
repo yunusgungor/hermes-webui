@@ -49,7 +49,8 @@ RUN groupadd -g 1024 hermeswebui \
     && mkdir -p /app /uv_cache \
     && chown -R hermeswebui:hermeswebui /home/hermeswebui /app /uv_cache
 
-COPY --chmod=555 docker_init.bash /hermeswebui_init.bash
+COPY docker_init.bash /hermeswebui_init.bash
+RUN chmod 555 /hermeswebui_init.bash
 
 RUN touch /.within_container
 
@@ -82,8 +83,6 @@ EXPOSE 8787
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
   CMD curl -f http://localhost:8787/health || exit 1
 
-# docker_init.bash performs root-only bind-mount setup, then drops to hermeswebui
-# before starting the WebUI server. The production image does not ship sudo.
 USER root
 CMD ["/hermeswebui_init.bash"]
 

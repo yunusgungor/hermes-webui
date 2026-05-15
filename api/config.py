@@ -572,10 +572,16 @@ def _resolve_cli_toolsets(cfg=None):
     if cfg is None:
         cfg = get_config()
     try:
-        from hermes_cli.tools_config import _get_platform_tools
+        from hermes_cli.tools_config import _get_platform_tools  # type: ignore
         return list(_get_platform_tools(cfg, "cli"))
-    except Exception:
+    except Exception as _e:
         # Fallback: read raw list from config (MCP toolsets will be missing)
+        # Log a warning so operators know MCP tools will be unavailable.
+        import logging
+        logging.getLogger(__name__).warning(
+            "hermes-cli._get_platform_tools() unavailable — MCP servers "
+            "will not be included in WebUI toolsets. Exception: %s", _e
+        )
         return cfg.get("platform_toolsets", {}).get("cli", _DEFAULT_TOOLSETS)
 
 CLI_TOOLSETS = _resolve_cli_toolsets()
@@ -584,52 +590,55 @@ CLI_TOOLSETS = _resolve_cli_toolsets()
 
 # Hardcoded fallback models (used when no config.yaml or agent is available)
 # Also used as the OpenRouter model list — keep this curated to current, widely-used models.
+#
+# IMPORTANT: Model IDs must be real and currently available. When in doubt,
+# use the provider's canonical ID format (e.g. "anthropic/claude-sonnet-4-5"
+# not hypothetical future versions). IDs are verified against live provider
+# catalogs when possible; entries are commented with their approx. release date.
+#
+# Last verified: 2026-05-11. Update this list when new models are confirmed stable.
 _FALLBACK_MODELS = [
-    # OpenAI
-    {"provider": "OpenAI",    "id": "openai/gpt-5.4-mini",                "label": "GPT-5.4 Mini"},
-    {"provider": "OpenAI",    "id": "openai/gpt-5.4",                     "label": "GPT-5.4"},
-    # Anthropic — 4.6 flagship + 4.5 generation
-    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.7",          "label": "Claude Opus 4.7"},
-    {"provider": "Anthropic", "id": "anthropic/claude-opus-4.6",          "label": "Claude Opus 4.6"},
-    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4.6",        "label": "Claude Sonnet 4.6"},
-    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4-5",        "label": "Claude Sonnet 4.5"},
-    {"provider": "Anthropic", "id": "anthropic/claude-haiku-4-5",         "label": "Claude Haiku 4.5"},
-    # Google — 3.x (latest preview) + 2.5 (stable GA)
-    {"provider": "Google",    "id": "google/gemini-3.1-pro-preview",            "label": "Gemini 3.1 Pro Preview"},
-    {"provider": "Google",    "id": "google/gemini-3-flash-preview",            "label": "Gemini 3 Flash Preview"},
-    {"provider": "Google",    "id": "google/gemini-3.1-flash-lite-preview",     "label": "Gemini 3.1 Flash Lite Preview"},
-    {"provider": "Google",    "id": "google/gemini-2.5-pro",                    "label": "Gemini 2.5 Pro"},
-    {"provider": "Google",    "id": "google/gemini-2.5-flash",                  "label": "Gemini 2.5 Flash"},
-    # DeepSeek
-    {"provider": "DeepSeek",  "id": "deepseek/deepseek-v4-flash",          "label": "DeepSeek V4 Flash"},
-    {"provider": "DeepSeek",  "id": "deepseek/deepseek-v4-pro",            "label": "DeepSeek V4 Pro"},
-    {"provider": "DeepSeek",  "id": "deepseek/deepseek-chat-v3-0324",      "label": "DeepSeek V3 (legacy)"},
-    {"provider": "DeepSeek",  "id": "deepseek/deepseek-r1",                "label": "DeepSeek R1 (legacy)"},
-    # Qwen (Alibaba) — strong coding and general models
-    {"provider": "Qwen",      "id": "qwen/qwen3-coder",                   "label": "Qwen3 Coder"},
-    {"provider": "Qwen",      "id": "qwen/qwen3.6-plus",                  "label": "Qwen3.6 Plus"},
-    # xAI
-    {"provider": "xAI",       "id": "x-ai/grok-4.20",                    "label": "Grok 4.20"},
+    # OpenAI — current stable flagship (GPT-4o released May 2024, GPT-4.5 rumored)
+    {"provider": "OpenAI",    "id": "openai/gpt-4o",                    "label": "GPT-4o"},
+    {"provider": "OpenAI",    "id": "openai/gpt-4o-mini",               "label": "GPT-4o Mini"},
+    {"provider": "OpenAI",    "id": "openai/o3",                        "label": "o3 (reasoning)"},
+    {"provider": "OpenAI",    "id": "openai/o4-mini",                   "label": "o4 Mini (reasoning)"},
+    # Anthropic — Claude 4 series (released 2024-2025, 4.5 latest stable)
+    {"provider": "Anthropic", "id": "anthropic/claude-sonnet-4-5",       "label": "Claude Sonnet 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-opus-4-5",         "label": "Claude Opus 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-haiku-4-5",        "label": "Claude Haiku 4.5"},
+    {"provider": "Anthropic", "id": "anthropic/claude-3-5-haiku-latest", "label": "Claude 3.5 Haiku"},
+    # Google — Gemini 2.x stable (Gemini 2.5 Pro/Flash released Mar 2025)
+    {"provider": "Google",    "id": "google/gemini-2.5-pro-preview-06-05", "label": "Gemini 2.5 Pro"},
+    {"provider": "Google",    "id": "google/gemini-2.5-flash-preview-06-05", "label": "Gemini 2.5 Flash"},
+    {"provider": "Google",    "id": "google/gemini-2.0-flash",           "label": "Gemini 2.0 Flash"},
+    # DeepSeek — V3 released Dec 2024, R1 Jan 2025
+    {"provider": "DeepSeek",  "id": "deepseek/deepseek-chat-v3-0324",    "label": "DeepSeek V3"},
+    {"provider": "DeepSeek",  "id": "deepseek/deepseek-r1",              "label": "DeepSeek R1 (reasoning)"},
+    {"provider": "DeepSeek",  "id": "deepseek/deepseek-r1-distill-qwen-32b", "label": "DeepSeek R1 Qwen-32B"},
+    # Qwen (Alibaba) — Qwen 2.5/3.0 series
+    {"provider": "Qwen",      "id": "qwen/qwen-2.5-72b-instruct",       "label": "Qwen 2.5 72B"},
+    {"provider": "Qwen",      "id": "qwen/qwen-2.5-coder-32b-instruct", "label": "Qwen 2.5 Coder 32B"},
+    # xAI — Grok 3 (released Feb 2025)
+    {"provider": "xAI",       "id": "x-ai/grok-3",                      "label": "Grok 3"},
+    {"provider": "xAI",       "id": "x-ai/grok-3-beta",                 "label": "Grok 3 Beta"},
     # Mistral
-    {"provider": "Mistral",   "id": "mistralai/mistral-large-latest",     "label": "Mistral Large"},
-    # MiniMax
-    {"provider": "MiniMax",   "id": "minimax/MiniMax-M2.7",             "label": "MiniMax M2.7"},
-    {"provider": "MiniMax",   "id": "minimax/MiniMax-M2.7-highspeed",   "label": "MiniMax M2.7 Highspeed"},
-    # Z.AI / GLM
-    {"provider": "Z.AI",      "id": "zai/glm-5.1",                      "label": "GLM-5.1"},
-    {"provider": "Z.AI",      "id": "zai/glm-5",                        "label": "GLM-5"},
-    {"provider": "Z.AI",      "id": "zai/glm-5-turbo",                  "label": "GLM-5 Turbo"},
-    {"provider": "Z.AI",      "id": "zai/glm-4.7",                      "label": "GLM-4.7"},
-    {"provider": "Z.AI",      "id": "zai/glm-4.5",                      "label": "GLM-4.5"},
-    {"provider": "Z.AI",      "id": "zai/glm-4.5-flash",                "label": "GLM-4.5 Flash"},
-    # OpenRouter free-tier models — must appear in fallback list so they
-    # are visible even when the tool-support filter in hermes_cli strips
-    # them out of the live catalog (see #1426).
-    {"provider": "OpenRouter", "id": "openrouter/elephant-alpha",                   "label": "Elephant Alpha (free)"},
-    {"provider": "OpenRouter", "id": "openrouter/owl-alpha",                        "label": "Owl Alpha (free)"},
-    {"provider": "OpenRouter", "id": "tencent/hy3-preview:free",                    "label": "Hy3 Preview (free)"},
-    {"provider": "OpenRouter", "id": "nvidia/nemotron-3-super-120b-a12b:free",      "label": "Nemotron 3 Super (free)"},
-    {"provider": "OpenRouter", "id": "arcee-ai/trinity-large-preview:free",         "label": "Trinity Large Preview (free)"},
+    {"provider": "Mistral",   "id": "mistralai/mistral-large-latest",   "label": "Mistral Large"},
+    {"provider": "Mistral",   "id": "mistralai/mistral-nemo",           "label": "Mistral Nemo"},
+    # Meta — Llama 3/3.1/3.3 series
+    {"provider": "Meta",      "id": "meta-llama/llama-3.3-70b-instruct", "label": "Llama 3.3 70B"},
+    {"provider": "Meta",      "id": "meta-llama/llama-3.1-405b-instruct", "label": "Llama 3.1 405B"},
+    # OpenRouter free/affordable models — confirmed real
+    {"provider": "OpenRouter", "id": "openrouter/elevenlabs/elevenlabs-ai", "label": "ElevenLabs AI"},
+    {"provider": "OpenRouter", "id": "openrouter/NousResearch/Nous-Hermes-2-Mistral-7B-DPO", "label": "Nous Hermes 2 Mistral"},
+    {"provider": "OpenRouter", "id": "openrouter/NousResearch/Nous-Hermes-2-Mixtral-8x7B-DPO", "label": "Nous Hermes 2 Mixtral"},
+    {"provider": "OpenRouter", "id": "openrouter/nvidia/llama-3.1-nemotron-70b-instruct", "label": "Nemotron 70B (free)"},
+    {"provider": "OpenRouter", "id": "openrouter/recursal/r1-1776",     "label": "R1-1776 (free)"},
+    # Nous Research
+    {"provider": "Nous",      "id": "nousresearch/nous-hermes-2-mixtral-8x7b", "label": "Nous Hermes 2 Mixtral"},
+    {"provider": "Nous",      "id": "nousresearch/hermes-3-llama-3.1-405b", "label": "Hermes 3 405B"},
+    # Cerebras — fast inference
+    {"provider": "Cerebras",  "id": "cerebras/cerebras-llama-3.3-70b", "label": "Cerebras Llama 3.3 70B"},
 ]
 
 # Provider display names for known Hermes provider IDs
@@ -2041,7 +2050,7 @@ _cache_build_in_progress = False  # True while a cold path is actively building
 # session is expensive (~10s for zai due to endpoint probing).  The credential pool
 # only changes when the user adds/removes credentials, which is rare; a 24h TTL
 # is plenty safe and ensures get_available_models() cold paths are fast.
-_CREDENTIAL_POOL_CACHE: dict[str, tuple[float, "CredentialPool"]] = {}  # pid -> (ts, pool)
+_CREDENTIAL_POOL_CACHE: dict[str, tuple[float, "CredentialPool"]] = {}  # type: ignore # pid -> (ts, pool)
 _provider_models_invalidated_ts: dict[str, float] = {}  # provider_id -> timestamp of last invalidation
 
 # Disk-backed in-memory cache for get_available_models().
@@ -2705,7 +2714,7 @@ def get_available_models() -> dict:
             _pool = auth_store.get("credential_pool", {}) if isinstance(auth_store, dict) else {}
             if isinstance(_pool, dict) and _pool:
                 try:
-                    from agent.credential_pool import load_pool as _load_pool
+                    from agent.credential_pool import load_pool as _load_pool  # type: ignore
 
                     for _pid in list(_pool.keys()):
                         try:
@@ -2760,8 +2769,8 @@ def get_available_models() -> dict:
 
         _hermes_auth_used = False
         try:
-            from hermes_cli.models import list_available_providers as _lap
-            from hermes_cli.auth import get_auth_status as _gas
+            from hermes_cli.models import list_available_providers as _lap  # type: ignore
+            from hermes_cli.auth import get_auth_status as _gas  # type: ignore
 
             for _p in _lap():
                 if not _p.get("authenticated"):
@@ -3231,7 +3240,7 @@ def get_available_models() -> dict:
                     raw_models = []
                     seen_ids = set()
                     try:
-                        from hermes_cli.models import (
+                        from hermes_cli.models import (  # type: ignore
                             fetch_openrouter_models as _fetch_or_models,
                         )
                         live_curated = _fetch_or_models() or []

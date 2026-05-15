@@ -179,7 +179,7 @@ def _build_redact_fn():
         return text
 
     try:
-        from agent.redact import redact_sensitive_text
+        from agent.redact import redact_sensitive_text  # type: ignore
     except ImportError:
         return _fallback_redact
 

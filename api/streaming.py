@@ -986,7 +986,7 @@ def _is_minimax_route(provider: str = '', model: str = '', base_url: str = '') -
 def _aux_title_configured() -> bool:
     """Return True when any auxiliary title_generation config field is meaningfully set."""
     try:
-        from agent.auxiliary_client import _get_auxiliary_task_config
+        from agent.auxiliary_client import _get_auxiliary_task_config  # type: ignore
         tg = _get_auxiliary_task_config('title_generation')
         provider = tg.get('provider', '') or ''
         model = tg.get('model', '') or ''
@@ -1003,7 +1003,7 @@ def _aux_title_timeout(default: float = 15.0) -> float:
     so mis-configurations are visible in server output.
     """
     try:
-        from agent.auxiliary_client import _get_auxiliary_task_config
+        from agent.auxiliary_client import _get_auxiliary_task_config  # type: ignore
         tg = _get_auxiliary_task_config('title_generation')
         raw = tg.get('timeout')
         if raw is None:
@@ -1143,7 +1143,7 @@ def generate_title_raw_via_aux(
         reasoning_extra["reasoning_split"] = True
     try:
         _timeout = _aux_title_timeout()
-        from agent.auxiliary_client import call_llm
+        from agent.auxiliary_client import call_llm  # type: ignore
         last_status = 'llm_error_aux'
         for idx, prompt in enumerate(prompts):
             messages = [
@@ -1227,7 +1227,7 @@ def generate_title_raw_via_agent(agent, user_text: str, assistant_text: str) -> 
                         if not raw:
                             empty_status = 'llm_empty'
                     elif getattr(agent, 'api_mode', '') == 'anthropic_messages':
-                        from agent.anthropic_adapter import build_anthropic_kwargs, normalize_anthropic_response
+                        from agent.anthropic_adapter import build_anthropic_kwargs, normalize_anthropic_response  # type: ignore
                         ant_kwargs = build_anthropic_kwargs(
                             model=agent.model,
                             messages=api_messages,
@@ -2176,7 +2176,7 @@ def _attempt_credential_self_heal(
             SESSION_AGENT_CACHE, SESSION_AGENT_CACHE_LOCK,
             invalidate_credential_pool_cache,
         )
-        from hermes_cli.runtime_provider import resolve_runtime_provider
+        from hermes_cli.runtime_provider import resolve_runtime_provider  # type: ignore
 
         # 1. Re-read auth.json (triggers a fresh credential scan)
         _fresh_auth = read_auth_json()
@@ -2551,7 +2551,7 @@ def _run_agent_streaming(
         _approval_registered = False
         _unreg_notify = None
         try:
-            from tools.approval import (
+            from tools.approval import (  # type: ignore
                 register_gateway_notify as _reg_notify,
                 unregister_gateway_notify as _unreg_notify,
             )
@@ -2783,7 +2783,7 @@ def _run_agent_streaming(
                     # Fallback: poll for pending approval in case notify_cb wasn't
                     # registered (e.g. older approval module without gateway support).
                     try:
-                        from tools.approval import has_pending as _has_pending, _pending, _lock
+                        from tools.approval import has_pending as _has_pending, _pending, _lock  # type: ignore
                         if _has_pending(session_id):
                             with _lock:
                                 p = dict(_pending.get(session_id, {}))
@@ -2869,7 +2869,7 @@ def _run_agent_streaming(
             resolved_api_key = None
             try:
                 from api.oauth import resolve_runtime_provider_with_anthropic_env_lock
-                from hermes_cli.runtime_provider import resolve_runtime_provider
+                from hermes_cli.runtime_provider import resolve_runtime_provider  # type: ignore
                 _rt = resolve_runtime_provider_with_anthropic_env_lock(
                     resolve_runtime_provider,
                     requested=resolved_provider,
@@ -3085,6 +3085,13 @@ def _run_agent_streaming(
                     # field the cached agent silently retains the previous
                     # profile's SOUL.md (and any other profile-scoped context).
                     _profile_home or '',
+                    _agent_kwargs.get('acp_args'),
+                    # credential_pool is a non-JSON-serializable Python object.
+                    # Include only its string representation so the cache signature
+                    # is still meaningful (changes when pool type changes) but the
+                    # JSON blob stays valid. Fixes: "Object of type CredentialPool
+                    # is not JSON serializable" error on every streaming request.
+                    str(type(_agent_kwargs.get('credential_pool'))) if _agent_kwargs.get('credential_pool') else None,
                 ], sort_keys=True)
                 _agent_sig = _hashlib.sha256(_sig_blob.encode()).hexdigest()[:16]
 

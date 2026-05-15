@@ -24,6 +24,7 @@ from __future__ import annotations
 
 import importlib
 import json
+import os
 from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any
@@ -280,6 +281,19 @@ def build_agent_health_payload() -> dict[str, Any]:
       * None: no gateway metadata/status is available, so this WebUI setup is
         probably not configured with a separate gateway process.
     """
+    # Workpanel single-container mode: no separate gateway daemon running
+    # In this mode, skip gateway health checks to avoid false "not running" alerts
+    if os.environ.get("HERMES_WEBUI_SINGLE_CONTAINER"):
+        checked_at = _checked_at()
+        return {
+            "alive": None,
+            "checked_at": checked_at,
+            "details": {
+                "state": "single_container",
+                "reason": "gateway_not_configured",
+            },
+        }
+
     checked_at = _checked_at()
     try:
         gateway_status = _gateway_status_module()

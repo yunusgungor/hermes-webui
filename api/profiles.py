@@ -452,7 +452,7 @@ class cron_profile_context:
 
     Usage:
         with cron_profile_context():
-            from cron.jobs import list_jobs
+            from cron.jobs import list_jobs  # type: ignore
             jobs = list_jobs(include_disabled=True)
 
     Serializes cron API calls across profiles (cron API is low-frequency;
@@ -838,7 +838,7 @@ def switch_profile(name: str, *, process_wide: bool = True) -> dict:
 def list_profiles_api() -> list:
     """List all profiles with metadata, serialized for JSON response."""
     try:
-        from hermes_cli.profiles import list_profiles
+        from hermes_cli.profiles import list_profiles  # type: ignore
         infos = list_profiles()
     except ImportError:
         # hermes_cli not available -- return just the default
@@ -1035,7 +1035,7 @@ def create_profile_api(name: str, clone_from: str = None,
     default_model, model_provider = _split_webui_provider_model_value(default_model, model_provider)
 
     try:
-        from hermes_cli.profiles import create_profile
+        from hermes_cli.profiles import create_profile  # type: ignore
         create_profile(
             name,
             clone_from=clone_from,
@@ -1108,7 +1108,7 @@ def delete_profile_api(name: str) -> dict:
             )
 
     try:
-        from hermes_cli.profiles import delete_profile
+        from hermes_cli.profiles import delete_profile  # type: ignore
         delete_profile(name, yes=True)
     except ImportError:
         # Manual fallback: just remove the directory
